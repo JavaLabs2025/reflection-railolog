@@ -1,5 +1,10 @@
 package org.example.classes;
 
+import lombok.ToString;
+import org.example.generator.Generatable;
+
+@ToString
+@Generatable
 public class Triangle implements Shape {
     private double sideA;
     private double sideB;

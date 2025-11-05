@@ -1,5 +1,14 @@
 package org.example.classes;
 
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import org.example.generator.Generatable;
+
+@Getter
+@Setter
+@ToString
+@Generatable
 public class BinaryTreeNode {
     private Integer data;
     private BinaryTreeNode left;
@@ -8,26 +17,6 @@ public class BinaryTreeNode {
     public BinaryTreeNode(Integer data, BinaryTreeNode left, BinaryTreeNode right) {
         this.data = data;
         this.left = left;
-        this.right = right;
-    }
-
-    public Integer getData() {
-        return data;
-    }
-
-    public BinaryTreeNode getLeft() {
-        return left;
-    }
-
-    public BinaryTreeNode getRight() {
-        return right;
-    }
-
-    public void setLeft(BinaryTreeNode left) {
-        this.left = left;
-    }
-
-    public void setRight(BinaryTreeNode right) {
         this.right = right;
     }
 }

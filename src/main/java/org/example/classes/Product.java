@@ -1,5 +1,10 @@
 package org.example.classes;
 
+import lombok.ToString;
+import org.example.generator.Generatable;
+
+@ToString
+@Generatable
 public class Product {
     private String name;
     private double price;
@@ -38,11 +43,6 @@ public class Product {
     @Override
     public boolean equals(Object obj) {
         return super.equals(obj);
-    }
-
-    @Override
-    public String toString() {
-        return super.toString();
     }
 
 }

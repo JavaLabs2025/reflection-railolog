@@ -2,6 +2,11 @@ package org.example.classes;
 
 import java.util.List;
 
+import lombok.ToString;
+import org.example.generator.Generatable;
+
+@ToString
+@Generatable
 public class Cart {
     private List<Product> items;
 
