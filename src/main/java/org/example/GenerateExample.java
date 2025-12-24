@@ -1,10 +1,14 @@
 package org.example;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+
 import org.example.classes.*;
 import org.example.generator.Generator;
 
 public class GenerateExample {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws NoSuchFieldException {
         var gen = new Generator();
         
         System.out.println("=== Testing Generator ===");
@@ -75,6 +79,18 @@ public class GenerateExample {
             System.out.println("Generated: " + node);
         } catch (Exception e) {
             System.err.println("Error generating BinaryTreeNode: " + e.getMessage());
+        }
+
+        Field items = Cart.class.getDeclaredField("items");
+        Type genericType = items.getGenericType();
+        if (genericType instanceof ParameterizedType pType) {
+            Type[] actualTypeArguments = pType.getActualTypeArguments();
+            for (Type type : actualTypeArguments) {
+                if (type instanceof Class<?> elementClass) {
+                    System.out.println("Declared element type: " + elementClass.getName());
+                    // Output: Declared element type: java.lang.String
+                }
+            }
         }
     }
 }

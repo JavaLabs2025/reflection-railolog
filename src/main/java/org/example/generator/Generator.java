@@ -4,9 +4,11 @@ import java.lang.reflect.*;
 import java.util.*;
 
 public class Generator {
+
+    private static final int MAX_COLLECTION_SIZE = 10;
+    private static final int MAX_DEPTH = 10;
+
     private final Random random = new Random();
-    private final int maxDepth = 3;
-    private final int maxCollectionSize = 5;
     private final InterfaceRegistry interfaceRegistry = new InterfaceRegistry();
 
     public Object generateValueOfType(Class<?> clazz) throws Exception {
@@ -14,7 +16,11 @@ public class Generator {
     }
 
     private Object generateValueOfType(Class<?> clazz, int currentDepth) throws Exception {
-        if (currentDepth > maxDepth) {
+        return generateValueOfType(clazz, currentDepth, null);
+    }
+
+    private Object generateValueOfType(Class<?> clazz, int currentDepth, Field field) throws Exception {
+        if (currentDepth > MAX_DEPTH) {
             return null;
         }
 
@@ -48,10 +54,13 @@ public class Generator {
         }
 
         if (List.class.isAssignableFrom(clazz)) {
-            return generateList(currentDepth);
+            return field == null ? new ArrayList<>() : generateList(field, currentDepth);
         }
         if (Set.class.isAssignableFrom(clazz)) {
-            return generateSet(currentDepth);
+            return field == null ? new HashSet<>() : generateSet(field, currentDepth);
+        }
+        if (Map.class.isAssignableFrom(clazz)) {
+            return field == null ? new HashMap<>() : generateMap(field, currentDepth);
         }
 
         if (clazz.isInterface()) {
@@ -82,7 +91,81 @@ public class Generator {
             params[i] = generateValueOfType(paramTypes[i], currentDepth + 1);
         }
 
-        return selectedConstructor.newInstance(params);
+        Object instance = selectedConstructor.newInstance(params);
+        populateFields(instance, clazz, currentDepth);
+        return instance;
+    }
+
+    public void populateFields(Object instance, Class<?> clazz, int currentDepth) {
+        for (Field field : getAllFields(clazz)) {
+            if (Modifier.isFinal(field.getModifiers())) {
+                continue;
+            }
+
+            try {
+                field.setAccessible(true);
+                Object fieldValue = generateValueOfType(field.getType(), currentDepth + 1, field);
+                field.set(instance, fieldValue);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private List<Object> generateList(Field field, int currentDepth) throws Exception {
+        List<Object> list = new ArrayList<>();
+        Class<?> elementClass = resolveSingleTypeArgument(field, 0);
+        int size = random.nextInt(MAX_COLLECTION_SIZE);
+
+        for (int i = 0; i < size; i++) {
+            list.add(elementClass != null ? generateValueOfType(elementClass, currentDepth + 1) : null);
+        }
+        return list;
+    }
+
+    private Set<Object> generateSet(Field field, int currentDepth) throws Exception {
+        Set<Object> set = new HashSet<>();
+        Class<?> elementClass = resolveSingleTypeArgument(field, 0);
+        int size = random.nextInt(MAX_COLLECTION_SIZE);
+
+        for (int i = 0; i < size; i++) {
+            set.add(elementClass != null ? generateValueOfType(elementClass, currentDepth + 1) : null);
+        }
+        return set;
+    }
+
+    private Map<Object, Object> generateMap(Field field, int currentDepth) throws Exception {
+        Map<Object, Object> map = new HashMap<>();
+        Class<?> keyClass = resolveSingleTypeArgument(field, 0);
+        Class<?> valueClass = resolveSingleTypeArgument(field, 1);
+        int size = random.nextInt(MAX_COLLECTION_SIZE);
+
+        for (int i = 0; i < size; i++) {
+            Object key = keyClass != null ? generateValueOfType(keyClass, currentDepth + 1) : null;
+            Object value = valueClass != null ? generateValueOfType(valueClass, currentDepth + 1) : null;
+            map.put(key, value);
+        }
+        return map;
+    }
+
+    public static Class<?> resolveSingleTypeArgument(Field field, int idx) {
+        Type genericType = field.getGenericType();
+        if (genericType instanceof ParameterizedType p) {
+            Type[] args = p.getActualTypeArguments();
+            if (idx >= 0 && idx < args.length && args[idx] instanceof Class<?> clazz) {
+                return clazz;
+            }
+        }
+        return null;
+    }
+
+    public static List<Field> getAllFields(Class<?> type) {
+        List<Field> result = new ArrayList<>();
+        Class<?> cur = type;
+        while (cur != null && cur != Object.class) {
+            Collections.addAll(result, cur.getDeclaredFields());
+            cur = cur.getSuperclass();
+        }
+        return result;
     }
 
     private Constructor<?> selectRandomConstructor(Constructor<?>[] constructors) {
@@ -95,33 +178,9 @@ public class Generator {
         return words[random.nextInt(words.length)] + random.nextInt(100);
     }
 
-    private List<Object> generateList(int depth) throws Exception {
-        List<Object> list = new ArrayList<>();
-        int size = random.nextInt(maxCollectionSize);
-
-        Class<?>[] possibleTypes = {String.class, Integer.class, Double.class};
-        for (int i = 0; i < size; i++) {
-            Class<?> randomType = possibleTypes[random.nextInt(possibleTypes.length)];
-            list.add(generateValueOfType(randomType, depth + 1));
-        }
-        return list;
-    }
-
-    private Set<Object> generateSet(int depth) throws Exception {
-        Set<Object> set = new HashSet<>();
-        int size = random.nextInt(maxCollectionSize);
-
-        Class<?>[] possibleTypes = {String.class, Integer.class, Double.class};
-        for (int i = 0; i < size; i++) {
-            Class<?> randomType = possibleTypes[random.nextInt(possibleTypes.length)];
-            set.add(generateValueOfType(randomType, depth + 1));
-        }
-        return set;
-    }
-
     private Object generateInterfaceImplementation(Class<?> interfaceClass, int depth) throws Exception {
         List<Class<?>> implementations = interfaceRegistry.getImplementations(interfaceClass);
-        
+
         if (implementations.isEmpty()) {
             throw new IllegalArgumentException("No @Generatable implementations found for interface: " + interfaceClass.getName());
         }
