@@ -81,17 +81,26 @@ public class Generator {
             return null;
         }
 
-        Constructor<?> selectedConstructor = selectRandomConstructor(constructors);
-        selectedConstructor.setAccessible(true);
+        Object instance = null;
+        for (Constructor<?> constructor : constructors) {
+            constructor.setAccessible(true);
+            Class<?>[] paramTypes = constructor.getParameterTypes();
+            Object[] params = new Object[paramTypes.length];
 
-        Class<?>[] paramTypes = selectedConstructor.getParameterTypes();
-        Object[] params = new Object[paramTypes.length];
+            for (int i = 0; i < paramTypes.length; i++) {
+                params[i] = generateValueOfType(paramTypes[i], currentDepth + 1);
+            }
 
-        for (int i = 0; i < paramTypes.length; i++) {
-            params[i] = generateValueOfType(paramTypes[i], currentDepth + 1);
+            try {
+                instance = constructor.newInstance(params);
+            } catch (Exception e) {
+                System.out.println("Error generating object: " + e.getMessage());
+            }
+        }
+        if (instance == null) {
+            return null;
         }
 
-        Object instance = selectedConstructor.newInstance(params);
         populateFields(instance, clazz, currentDepth);
         return instance;
     }
@@ -166,11 +175,6 @@ public class Generator {
             cur = cur.getSuperclass();
         }
         return result;
-    }
-
-    private Constructor<?> selectRandomConstructor(Constructor<?>[] constructors) {
-        int idx = random.nextInt(constructors.length);
-        return constructors[idx];
     }
 
     private String generateRandomString() {
